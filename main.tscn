@@ -1,0 +1,51 @@
+[gd_scene load_steps=7 format=3 uid="uid://ccrmfca82fd2q"]
+
+[ext_resource type="Texture2D" uid="uid://bro0vpbf32uiw" path="res://studio_country_hall_1k.hdr" id="1_0xm2m"]
+[ext_resource type="Material" uid="uid://n077o5gkm8ry" path="res://albedo.tres" id="3_1bvp3"]
+[ext_resource type="Script" uid="uid://6e5w2fy1l370" path="res://Manager.cs" id="3_h2yge"]
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_h2yge"]
+panorama = ExtResource("1_0xm2m")
+energy_multiplier = 0.75
+
+[sub_resource type="Sky" id="Sky_h2yge"]
+sky_material = SubResource("PanoramaSkyMaterial_h2yge")
+
+[sub_resource type="Environment" id="Environment_1bvp3"]
+sky = SubResource("Sky_h2yge")
+ambient_light_source = 3
+ambient_light_color = Color(1, 1, 1, 1)
+tonemap_mode = 3
+ssao_enabled = true
+ssao_intensity = 4.15
+glow_enabled = true
+
+[node name="Node3D" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1bvp3")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.352446, -0.638535, 0.684146, 0, 0.731056, 0.682317, -0.935832, -0.24048, 0.257658, 0, 0, 0)
+light_energy = 0.8
+shadow_enabled = true
+shadow_bias = 0.01
+shadow_blur = 1.691
+directional_shadow_mode = 0
+directional_shadow_split_1 = 0.02
+directional_shadow_fade_start = 1.0
+directional_shadow_max_distance = 5.0
+
+[node name="SubViewport" type="SubViewport" parent="."]
+screen_space_aa = 1
+size = Vector2i(1024, 1024)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.894677, 0.446713, 0, -0.446713, 0.894677, 0, 0.218984, 0.5)
+
+[node name="Manager" type="Node" parent="." node_paths=PackedStringArray("Viewport", "Camera")]
+script = ExtResource("3_h2yge")
+Viewport = NodePath("../SubViewport")
+Camera = NodePath("../SubViewport/Camera3D")
+AlbedoMaterial = ExtResource("3_1bvp3")

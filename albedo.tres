@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://n077o5gkm8ry"]
+
+[ext_resource type="Shader" uid="uid://dcwctype4yvcv" path="res://albedo.gdshader" id="1_x612v"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_x612v")
+shader_parameter/albedo = Color(1, 1, 1, 1)
+shader_parameter/albedo_texture_size = Vector2i(0, 0)
+shader_parameter/point_size = 0.0
