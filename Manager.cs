@@ -17,11 +17,11 @@ public partial class Manager : Node
     public Camera3D Camera { get; set; }
 
     [Export]
-    public Material AlbedoMaterial { get; set; }
+    public ShaderMaterial AlbedoMaterial { get; set; }
     [Export]
-    public Material DepthNormalsMaterial { get; set; }
+    public ShaderMaterial DepthNormalsMaterial { get; set; }
     [Export]
-    public Material ORMMaterial { get; set; }
+    public ShaderMaterial ORMMaterial { get; set; }
     
     // Called when the node enters the scene tree for the first time
     public override async void _Ready()
@@ -57,6 +57,7 @@ public partial class Manager : Node
         string lastKey = null;
         foreach (string arg in args) {
             if (arg.StartsWith('-')) {
+                if (lastKey != null) config.Add(lastKey, null);
                 if (arg.StartsWith("--")) {
                     lastKey = arg.Substr(2, arg.Length - 2);
                 } else {
@@ -70,11 +71,22 @@ public partial class Manager : Node
         if (lastKey != null) config.Add(lastKey, null);
 
         string[] requiredFlags = [
-            "model", "n_views", "resolution", "output_path"
+            "model", "output_path"
         ];
         bool hasRequiredFlags = requiredFlags.All(config.ContainsKey);
 
-        if (config.ContainsKey("help") || config.ContainsKey("h")) {
+        // Fill in optional values
+        Dictionary<string, string> optionalFlagDefaults = new() {
+            {"n_views", "150"},
+            {"resolution", "512"},
+            {"distance", "1.9"},
+            {"fov", "50"},
+        };
+        foreach (var fd in optionalFlagDefaults) {
+            if (!config.ContainsKey(fd.Key)) config.Add(fd.Key, fd.Value);
+        }
+
+        if (config.ContainsKey("help") || config.ContainsKey("h") || !hasRequiredFlags) {
             GD.Print(@"All3D Godot Render Tool
 
 Flags:
@@ -82,9 +94,13 @@ Flags:
 
     (Required)
     --model        [path]    The .glb file to render
-    --n_views      [int]     Number of views to render
-    --resolution   [int]     The resolution of the renders
     --output_path  [path]    The folder where the renders are saved
+
+    (Optional)
+    --n_views      [int]     (150)  Number of views to render
+    --resolution   [int]     (512)  The resolution of the renders
+    --distance     [float]   (1.9)  The distance of the camera to the origin
+    --fov          [float]   (50)   The field of view of the camera in degrees
 
     (Output types)
     --lit          Render lit mesh
@@ -96,7 +112,12 @@ Flags:
             sceneTree.Quit();
         }
 
-        DirAccess.Open("res://").MakeDir("renders");
+        if (!hasRequiredFlags) {
+            sceneTree.Quit();
+            return;
+        }
+
+        DirAccess.MakeDirAbsolute(config["output_path"]);
 
         var res = Int32.Parse(config["resolution"]);
         Viewport.Size = new Vector2I(res, res);
@@ -109,7 +130,8 @@ Flags:
         NormalizeModel(modelRoot);
         loadSw.Stop();
 
-        var views = FibonacciSphere(Int32.Parse(config["n_views"]));
+        Camera.Fov = float.Parse(config["fov"]);
+        var views = FibonacciSphere(Int32.Parse(config["n_views"]), float.Parse(config["distance"]));
 
         var DoRender = async (string prefix) => {
             GD.Print($"Rendering {prefix}...");
@@ -136,7 +158,7 @@ Flags:
         GD.Print($" - Render elapsed: {renderSw.Elapsed.TotalSeconds}s ({1f/(renderSw.Elapsed.TotalSeconds/150f)}images/s)");
         GD.Print($" - Total elapsed: {loadSw.Elapsed.TotalSeconds + renderSw.Elapsed.TotalSeconds}s");
 
-        //sceneTree.Quit();
+        sceneTree.Quit();
     }
 
     private List<Vector3> FibonacciSphere(int samples = 1, float radius = 1.0f)
@@ -254,21 +276,21 @@ Flags:
         return result;
     }
 
-    private void ApplyMaterialRecursively(Node root, Material mat)
+    private void ApplyMaterialRecursively(Node root, ShaderMaterial mat)
     {
         var seen = new Dictionary<Material, Material>();
+        HashSet<string> targetParams = mat.Shader.GetShaderUniformList().Select(x => x.AsGodotDictionary()["name"].AsString()).ToHashSet();
         OverrideRecursively(root, seen, (source) => {
             var sourceParams = source.GetPropertyList();
-            Material target = (Material)mat.Duplicate();
+            ShaderMaterial target = (ShaderMaterial)mat.Duplicate();
         
             foreach (var paramDict in sourceParams)
             {
                 string paramName = paramDict["name"].AsString();
-                GD.Print(paramName);
                 
-                if (target.GetPropertyList().ToList().Exists(p => p["name"].AsString() == paramName))
+                if (targetParams.Contains(paramName))
                 {
-                    target.Set(paramName, source.Get(paramName));
+                    target.SetShaderParameter(paramName, source.Get(paramName));
                 }
             }
 
