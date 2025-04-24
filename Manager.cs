@@ -7,6 +7,10 @@ using System.Threading;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Reflection.Metadata.Ecma335;
+using Godot.NativeInterop;
+using System.Dynamic;
+using System.Text.Json;
 
 public partial class Manager : Node
 {
@@ -45,10 +49,11 @@ public partial class Manager : Node
             args = [
                 "--model", "C:/Users/Tesse/Downloads/30600.glb",
                 "--n_views", "150",
-                "--resolution", "512",
+                "--resolution", "1024",
                 "--output_path", "res://renders",
                 "--lit",
-                "--albedo"
+                // "--albedo",
+                // "--depth_normals",
             ];
         }
 
@@ -103,11 +108,10 @@ Flags:
     --fov          [float]   (50)   The field of view of the camera in degrees
 
     (Output types)
-    --lit          Render lit mesh
-    --albedo       Render albedos
-    --orm          Render occlusion/roughness/metallic maps
-    --normals      Render normals
-    --depth        Render depth
+    --lit             Render lit mesh
+    --albedo          Render albedos
+    --orm             Render occlusion/roughness/metallic maps
+    --depth_normals   Render depth/normals (alpha channel is depth)
             ");
             sceneTree.Quit();
         }
@@ -152,7 +156,53 @@ Flags:
             this.ApplyMaterialRecursively(modelRoot, AlbedoMaterial);
             await DoRender("Albedo");
         }
+        if (config.ContainsKey("depth_normals")) {
+            this.ApplyMaterialRecursively(modelRoot, DepthNormalsMaterial);
+            await DoRender("DepthNormals");
+        }
+        if (config.ContainsKey("orm")) {
+            this.ApplyMaterialRecursively(modelRoot, ORMMaterial);
+            await DoRender("Albedo");
+        }
         renderSw.Stop();
+        GD.Print("Saving render metadata...");
+        List<ExpandoObject> cameraViews = new();
+        foreach (var view in views) {
+            dynamic viewInfo = new ExpandoObject();
+
+            int resolution = int.Parse(config["resolution"]);
+            viewInfo.resolution = resolution;
+            viewInfo.depth_range = Camera.Far;
+
+            // Extrinsics
+            Camera.GlobalPosition = view;
+            Camera.LookAt(Vector3.Zero);
+            float[][] extrinsics = Camera.GlobalTransform.AsFloatArray();
+            viewInfo.extrinsics = extrinsics;
+
+            // Intrinsics
+            // https://photo.stackexchange.com/questions/97213/finding-focal-length-from-image-size-and-fov
+            float flPx = (float)resolution/(2f * (float)Mathf.Tan(Mathf.DegToRad(Camera.Fov)/2.0));
+            float[][] intrinsics = [
+                [flPx, 0, resolution/2],
+                [0, flPx, resolution/2],
+                [0, 0, 1],
+            ];
+            viewInfo.intrinsics = intrinsics;
+
+            cameraViews.Add(viewInfo);
+        }
+        dynamic metadata = new ExpandoObject();
+        metadata.version = 2;
+        metadata.source = "godot";
+        metadata.views = cameraViews;
+        var jsonString = JsonSerializer.Serialize(metadata, new JsonSerializerOptions {
+            //WriteIndented = true
+        });
+        //GD.Print(jsonString);
+        var fa = Godot.FileAccess.Open(Path.Join(config["output_path"], "metadata.json"), Godot.FileAccess.ModeFlags.Write);
+        fa.StoreString(jsonString);
+        fa.Close();
         GD.Print($"Done!");
         GD.Print($" - Load elapsed: {loadSw.Elapsed.TotalSeconds}s");
         GD.Print($" - Render elapsed: {renderSw.Elapsed.TotalSeconds}s ({1f/(renderSw.Elapsed.TotalSeconds/150f)}images/s)");

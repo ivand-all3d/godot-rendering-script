@@ -1,0 +1,9 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://d3cvo83yuhy43"]
+
+[ext_resource type="Shader" uid="uid://x10h35htddjq" path="res://depth_normal.gdshader" id="1_eh313"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_eh313")
+shader_parameter/z_near = 0.05
+shader_parameter/z_far = 10.0
