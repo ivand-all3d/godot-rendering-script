@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://g866tfsqvuxt"]
+
+[ext_resource type="Shader" uid="uid://cybom230yi124" path="res://orm.gdshader" id="1_8ja0e"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_8ja0e")
+shader_parameter/albedo_color = Color(0, 0, 0, 1)
+shader_parameter/albedo_texture_size = Vector2i(0, 0)
+shader_parameter/point_size = 0.0

@@ -50,10 +50,12 @@ public partial class Manager : Node
                 "--model", "C:/Users/Tesse/Downloads/30600.glb",
                 "--n_views", "150",
                 "--resolution", "1024",
+                "--format", "webp",
                 "--output_path", "res://renders",
                 "--lit",
-                // "--albedo",
-                // "--depth_normals",
+                "--orm",
+                "--albedo",
+                "--normals",
             ];
         }
 
@@ -86,6 +88,7 @@ public partial class Manager : Node
             {"resolution", "512"},
             {"distance", "1.9"},
             {"fov", "50"},
+            {"format", "png"},
         };
         foreach (var fd in optionalFlagDefaults) {
             if (!config.ContainsKey(fd.Key)) config.Add(fd.Key, fd.Value);
@@ -102,6 +105,7 @@ Flags:
     --output_path  [path]    The folder where the renders are saved
 
     (Optional)
+    --format       [str]     (png)  Output image format (png/jpg/webp)
     --n_views      [int]     (150)  Number of views to render
     --resolution   [int]     (512)  The resolution of the renders
     --distance     [float]   (1.9)  The distance of the camera to the origin
@@ -109,9 +113,9 @@ Flags:
 
     (Output types)
     --lit             Render lit mesh
-    --albedo          Render albedos
+    --albedo          Render albedo maps
     --orm             Render occlusion/roughness/metallic maps
-    --depth_normals   Render depth/normals (alpha channel is depth)
+    --normals         Render normals
             ");
             sceneTree.Quit();
         }
@@ -139,7 +143,7 @@ Flags:
 
         var DoRender = async (string prefix) => {
             GD.Print($"Rendering {prefix}...");
-            var taskIds = await this.RenderViews(views, prefix, config["output_path"]);
+            var taskIds = await this.RenderViews(views, prefix, config["format"], config["output_path"]);
             GD.Print("Waiting for saving to wrap up...");
             foreach (long id in taskIds) {
                 WorkerThreadPool.WaitForTaskCompletion(id);
@@ -156,13 +160,13 @@ Flags:
             this.ApplyMaterialRecursively(modelRoot, AlbedoMaterial);
             await DoRender("Albedo");
         }
-        if (config.ContainsKey("depth_normals")) {
+        if (config.ContainsKey("normals")) {
             this.ApplyMaterialRecursively(modelRoot, DepthNormalsMaterial);
-            await DoRender("DepthNormals");
+            await DoRender("Normals");
         }
         if (config.ContainsKey("orm")) {
             this.ApplyMaterialRecursively(modelRoot, ORMMaterial);
-            await DoRender("Albedo");
+            await DoRender("ORM");
         }
         renderSw.Stop();
         GD.Print("Saving render metadata...");
@@ -377,7 +381,7 @@ Flags:
         }
     }
     
-    private async Task<List<long>> RenderViews(List<Vector3> views, string filePrefix, string renderPath)
+    private async Task<List<long>> RenderViews(List<Vector3> views, string filePrefix, string renderFormat, string renderPath)
     {
         if (Viewport == null || Camera == null)
         {
@@ -403,16 +407,24 @@ Flags:
             var texture = Viewport.GetTexture();
             var snapshot = texture.GetImage();
             taskIds.Add(WorkerThreadPool.AddTask(Callable.From(() => {
-                SaveRenderedImage(snapshot, Path.Join(renderPath, $"{filePrefix}_{i}.png"));
+                SaveRenderedImage(snapshot, renderFormat, Path.Join(renderPath, $"{filePrefix}_{i}"));
             }), true));
         }
 
         return taskIds;
     }
 
-    private void SaveRenderedImage(Image snapshot, string filePath) {
+    private void SaveRenderedImage(Image snapshot, string format, string filePath) {
         GD.Print($"Saving {Time.GetTicksMsec()/1000f}");
-        Error err = snapshot.SavePng(filePath);
+        Error err = Error.Ok;
+        
+        if (format == "jpg") {
+            err = snapshot.SaveJpg(filePath + ".jpg");
+        } else if (format == "webp") {
+            err = snapshot.SaveWebp(filePath + ".webp");
+        } else {
+            err = snapshot.SavePng(filePath + ".png");
+        }
         
         if (err != Error.Ok)
         {

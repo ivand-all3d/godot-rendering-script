@@ -4,10 +4,10 @@
 [ext_resource type="Material" uid="uid://n077o5gkm8ry" path="res://albedo.tres" id="3_1bvp3"]
 [ext_resource type="Script" uid="uid://6e5w2fy1l370" path="res://Manager.cs" id="3_h2yge"]
 [ext_resource type="Material" uid="uid://d3cvo83yuhy43" path="res://depth_normal.tres" id="4_1bvp3"]
+[ext_resource type="Material" uid="uid://g866tfsqvuxt" path="res://orm.tres" id="5_lquwl"]
 
 [sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_h2yge"]
 panorama = ExtResource("1_0xm2m")
-energy_multiplier = 0.75
 
 [sub_resource type="Sky" id="Sky_h2yge"]
 sky_material = SubResource("PanoramaSkyMaterial_h2yge")
@@ -18,11 +18,9 @@ ambient_light_source = 3
 ambient_light_color = Color(1, 1, 1, 1)
 tonemap_mode = 3
 ssao_enabled = true
-ssao_intensity = 4.15
+ssao_intensity = 2.5
+ssao_detail = 1.0
 glow_enabled = true
-
-[sub_resource type="Environment" id="Environment_lquwl"]
-background_mode = 1
 
 [node name="Node3D" type="Node3D"]
 
@@ -34,7 +32,7 @@ transform = Transform3D(0.352446, -0.638535, 0.684146, 0, 0.731056, 0.682317, -0
 light_energy = 0.8
 shadow_enabled = true
 shadow_bias = 0.01
-shadow_blur = 1.691
+shadow_blur = 0.5
 directional_shadow_mode = 0
 directional_shadow_split_1 = 0.02
 directional_shadow_fade_start = 1.0
@@ -48,7 +46,6 @@ render_target_update_mode = 4
 
 [node name="Camera3D" type="Camera3D" parent="SubViewport"]
 transform = Transform3D(1, 0, 0, 0, 0.894677, 0.446713, 0, -0.446713, 0.894677, 0, 0.218984, 0.5)
-environment = SubResource("Environment_lquwl")
 fov = 50.0
 near = 0.1
 far = 5.0
@@ -59,3 +56,4 @@ Viewport = NodePath("../SubViewport")
 Camera = NodePath("../SubViewport/Camera3D")
 AlbedoMaterial = ExtResource("3_1bvp3")
 DepthNormalsMaterial = ExtResource("4_1bvp3")
+ORMMaterial = ExtResource("5_lquwl")
